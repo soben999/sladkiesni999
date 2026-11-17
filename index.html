@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная — Гостиница «Сладкие сны»</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <a href="index.html" class="logo text-decoration-none text-white d-flex align-items-center gap-2">
+                <span class="logo-mark">🌙</span>
+                <div>
+                    <div class="logo-title">Сладкие сны</div>
+                    <div class="logo-slogan">Гостиница, в которой снятся только хорошие сны</div>
+                </div>
+            </a>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <nav class="main-nav">
+                    <a href="index.html" class="active">Главная</a>
+                    <a href="index.html#catalog">Каталог</a>
+                </nav>
+                <div id="auth-block"></div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container py-4">
+    <section class="hero text-center">
+        <h1>Отдых, который снится потом только в хорошем смысле</h1>
+        <p class="lead">Уютные номера в центре города, завтраки с домашней выпечкой и тишина после 22:00.</p>
+        <a href="#catalog" class="btn btn-accent btn-lg">Перейти в каталог номеров</a>
+    </section>
+
+    <section id="catalog" class="mt-5">
+        <h2 class="section-title">Каталог номеров</h2>
+        <p class="text-muted mb-4">Каждое обновление страницы — новая подборка из 6 случайных номеров.</p>
+
+        <div class="panel filters mb-4">
+            <fieldset class="filter-group">
+                <legend>Категория</legend>
+                <div class="checks" id="category-filters"></div>
+            </fieldset>
+            <div class="field field-narrow">
+                <label for="priceMin">Цена от, ₽</label>
+                <input id="priceMin" type="text" inputmode="numeric" placeholder="0">
+            </div>
+            <div class="field field-narrow">
+                <label for="priceMax">Цена до, ₽</label>
+                <input id="priceMax" type="text" inputmode="numeric" placeholder="20000">
+            </div>
+            <div class="field field-narrow">
+                <label for="guests">Гостей</label>
+                <select id="guests">
+                    <option value="">не важно</option>
+                    <option value="1">1+</option><option value="2">2+</option>
+                    <option value="3">3+</option><option value="4">4+</option>
+                    <option value="5">5+</option><option value="6">6+</option>
+                </select>
+            </div>
+            <div class="field field-narrow">
+                <label for="sort">Сортировка</label>
+                <select id="sort">
+                    <option value="default">по умолчанию</option>
+                    <option value="price-asc">сначала дешёвые</option>
+                    <option value="price-desc">сначала дорогие</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-accent" onclick="applyFilters()">Применить</button>
+                <button class="btn btn-outline-accent" onclick="resetFilters()">Сбросить фильтр</button>
+            </div>
+        </div>
+
+        <p id="catalog-info" class="text-muted mb-3"></p>
+        <div id="catalog-rooms" class="row g-4"></div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        <div class="d-flex justify-content-between flex-wrap gap-3">
+            <div>
+                <strong>Гостиница «Сладкие сны»</strong>
+                <p>📍 г. Москва, ул. Примерная, д. 10</p>
+                <p>🕒 Режим работы: круглосуточно, без выходных</p>
+            </div>
+            <div>
+                <p>📞 <a href="tel:+74951234567">+7 (495) 123-45-67</a></p>
+                <p>✉️ <a href="mailto:info@sweet-dreams.ru">info@sweet-dreams.ru</a></p>
+                <p class="text-white-50 small">© 2026 Сладкие сны</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="bootstrap.bundle.min.js"></script>
+<script>
+// ==================== ДАННЫЕ ====================
+const roomsDB = [
+    { id: 1,  title: "Мятный сон",          category: "Стандарт",    price: 3200,  guests: 1, area: 16, features: ["1 односпальная кровать", "16 м²", "Wi-Fi", "Душ"],            image: "img/room1.jpeg" },
+    { id: 2,  title: "Тёплое молоко",       category: "Стандарт",    price: 3600,  guests: 2, area: 18, features: ["2 односпальные кровати", "18 м²", "Завтрак включён"],           image: "img/room2.jpeg" },
+    { id: 3,  title: "Облако",              category: "Стандарт",    price: 3900,  guests: 2, area: 20, features: ["1 двуспальная кровать", "20 м²", "Кондиционер"],                image: "img/room3.jpeg" },
+    { id: 4,  title: "Карамель",            category: "Комфорт",     price: 4900,  guests: 2, area: 24, features: ["1 двуспальная кровать", "24 м²", "Балкон", "Завтрак включён"],  image: "img/room4.jpeg" },
+    { id: 5,  title: "Ваниль",              category: "Комфорт",     price: 5300,  guests: 3, area: 26, features: ["Двуспальная + диван", "26 м²", "Рабочая зона"],                 image: "img/room5.jpeg" },
+    { id: 6,  title: "Какао",               category: "Комфорт",     price: 5600,  guests: 2, area: 28, features: ["Кровать King-size", "28 м²", "Вид на парк", "Халаты и тапочки"],image: "img/room6.jpeg" },
+    { id: 7,  title: "Шоколадный трюфель",  category: "Люкс",        price: 8900,  guests: 2, area: 42, features: ["Кровать King-size", "42 м²", "Гостиная зона", "Мини-бар"],      image: "img/room7.jpeg" },
+    { id: 8,  title: "Медовый месяц",       category: "Люкс",        price: 10500, guests: 2, area: 48, features: ["Кровать King-size", "48 м²", "Джакузи", "Панорамные окна"],     image: "img/room8.jpg" },
+    { id: 9,  title: "Королевская ночь",    category: "Люкс",        price: 13900, guests: 3, area: 60, features: ["Спальня + гостиная", "60 м²", "Сауна", "Консьерж"],             image: "img/room9.jpeg" },
+    { id: 10, title: "Пряничный домик",     category: "Семейный",    price: 6900,  guests: 4, area: 38, features: ["2 комнаты", "38 м²", "Детская кроватка", "Завтрак включён"],    image: "img/room10.jpeg" },
+    { id: 11, title: "Мармелад",            category: "Семейный",    price: 7600,  guests: 5, area: 44, features: ["2 комнаты", "44 м²", "Кухня-ниша", "Игровая зона"],             image: "img/room11.jpg" },
+    { id: 12, title: "Апартаменты «Сны»",   category: "Апартаменты", price: 15900, guests: 4, area: 75, features: ["2 спальни + гостиная", "75 м²", "Кухня", "Стиральная машина", "Терраса"], image: "img/room12.jpeg" }
+];
+
+// ==================== УТИЛИТЫ ====================
+function pickRandom(arr, n) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a.slice(0, n);
+}
+function formatPrice(n) { return Number(n).toLocaleString('ru-RU') + ' ₽'; }
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function roomImage(room) {
+    // Если у номера есть картинка — используем её, иначе — заглушку
+    return room.image || `data:image/svg+xml;utf8,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+            <rect width="600" height="400" fill="#e7e3f3"/>
+            <text x="300" y="200" font-family="sans-serif" font-size="24" fill="#999" text-anchor="middle">Нет фото</text>
+        </svg>`)}`;
+}
+function roomCard(room) {
+    return `
+        <div class="col-md-6 col-lg-4">
+            <article class="card h-100">
+               <img src="${roomImage(room)}" alt="${escapeHtml(room.title)}" class="card-img">
+                <div class="card-body">
+                    <span class="badge">${escapeHtml(room.category)}</span>
+                    <h3 class="card-title">${escapeHtml(room.title)}</h3>
+                    <p class="price">${formatPrice(room.price)} <span class="text-muted small">/ сутки</span></p>
+                    <ul class="features">
+                        ${room.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+                        <li>Гостей: ${room.guests}</li>
+                    </ul>
+                    <a href="booking.html?room=${room.id}" class="btn btn-accent btn-block">Забронировать</a>
+                </div>
+            </article>
+        </div>`;
+}
+
+// ==================== КАТАЛОГ ====================
+function renderCatalog() {
+    const categories = [...new Set(roomsDB.map(r => r.category))];
+    document.getElementById('category-filters').innerHTML = categories.map(c => `
+        <label class="check">
+            <input type="checkbox" name="category" value="${c}">
+            <span>${escapeHtml(c)}</span>
+        </label>`).join('');
+    applyFilters();
+}
+function applyFilters() {
+    const selectedCats = Array.from(document.querySelectorAll('input[name="category"]:checked')).map(cb => cb.value);
+    const priceMin = document.getElementById('priceMin').value.trim();
+    const priceMax = document.getElementById('priceMax').value.trim();
+    const guests = document.getElementById('guests').value;
+    const sort = document.getElementById('sort').value;
+
+    let rooms = pickRandom(roomsDB, 6);
+    if (selectedCats.length) rooms = rooms.filter(r => selectedCats.includes(r.category));
+    if (priceMin && !isNaN(priceMin)) rooms = rooms.filter(r => r.price >= Number(priceMin));
+    if (priceMax && !isNaN(priceMax)) rooms = rooms.filter(r => r.price <= Number(priceMax));
+    if (guests) rooms = rooms.filter(r => r.guests >= Number(guests));
+    if (sort === 'price-asc') rooms.sort((a,b) => a.price - b.price);
+    if (sort === 'price-desc') rooms.sort((a,b) => b.price - a.price);
+
+    document.getElementById('catalog-info').textContent = `Показано номеров: ${rooms.length} из ${roomsDB.length}.`;
+    document.getElementById('catalog-rooms').innerHTML = rooms.length
+        ? rooms.map(roomCard).join('')
+        : '<div class="col-12"><div class="alert alert-info">По выбранным условиям номера не найдены.</div></div>';
+}
+function resetFilters() {
+    document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = false);
+    document.getElementById('priceMin').value = '';
+    document.getElementById('priceMax').value = '';
+    document.getElementById('guests').value = '';
+    document.getElementById('sort').value = 'default';
+    applyFilters();
+}
+
+// ==================== БЛОК АВТОРИЗАЦИИ ====================
+function renderAuthBlock() {
+    const block = document.getElementById('auth-block');
+    if (!block) return;
+    let session = null;
+    try { session = JSON.parse(sessionStorage.getItem('sd_admin')); } catch(e) {}
+    if (session && session.login) {
+        block.innerHTML = `
+            <span class="auth-user">👤 ${escapeHtml(session.login)}</span>
+            <a href="logout.html" class="btn btn-outline-light btn-sm">Выйти</a>
+        `;
+    } else {
+        block.innerHTML = `<a href="login.html" class="btn btn-outline-light btn-sm">Войти как администратор</a>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderCatalog();
+    renderAuthBlock();
+});
+</script>
+</body>
+</html>

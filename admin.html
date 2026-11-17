@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель — Гостиница «Сладкие сны»</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <a href="index.html" class="logo text-decoration-none text-white d-flex align-items-center gap-2">
+                <span class="logo-mark">🌙</span>
+                <div>
+                    <div class="logo-title">Сладкие сны</div>
+                    <div class="logo-slogan">Гостиница, в которой снятся только хорошие сны</div>
+                </div>
+            </a>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <nav class="main-nav">
+                    <a href="index.html">Главная</a>
+                    <a href="index.html#catalog">Каталог</a>
+                    <a href="admin.html" class="active">Администратор</a>
+                </nav>
+                <div id="auth-block"></div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container py-4">
+    <!-- Нет доступа -->
+    <div id="no-access" class="panel text-center" style="display:none; max-width:500px; margin:0 auto;">
+        <div style="font-size:52px;">🔒</div>
+        <h1 class="text-danger">Доступ запрещён</h1>
+        <p>Раздел доступен только администратору. Выполните вход.</p>
+        <a href="login.html" class="btn btn-accent btn-lg">Войти</a>
+        <a href="index.html" class="btn btn-outline-accent btn-lg ms-2">На главную</a>
+    </div>
+
+    <!-- Панель администратора -->
+    <div id="admin-panel" style="display:none;">
+        <h1 class="section-title">Модерирование заявок</h1>
+
+        <div class="stats mb-3" id="stats"></div>
+
+        <div class="panel filters mb-3">
+            <div class="field field-narrow">
+                <label for="status-filter">Статус</label>
+                <select id="status-filter">
+                    <option value="all">все</option>
+                    <option value="new">новые</option>
+                    <option value="confirmed">подтверждённые</option>
+                    <option value="rejected">отклонённые</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="search-filter">Поиск (№, фамилия, телефон, e-mail, номер)</label>
+                <input id="search-filter" type="text" placeholder="SD-0001 или Иванов">
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-accent" onclick="renderBookings()">Применить</button>
+                <button class="btn btn-outline-accent" onclick="resetAdminFilters()">Сбросить</button>
+            </div>
+        </div>
+
+        <div id="flash" class="mb-3"></div>
+        <div id="bookings-list"></div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        <div class="d-flex justify-content-between flex-wrap gap-3">
+            <div>
+                <strong>Гостиница «Сладкие сны»</strong>
+                <p>📍 г. Москва, ул. Примерная, д. 10</p>
+                <p>🕒 Режим работы: круглосуточно, без выходных</p>
+            </div>
+            <div>
+                <p>📞 <a href="tel:+74951234567">+7 (495) 123-45-67</a></p>
+                <p>✉️ <a href="mailto:info@sweet-dreams.ru">info@sweet-dreams.ru</a></p>
+                <p class="text-white-50 small">© 2026 Сладкие сны</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="bootstrap.bundle.min.js"></script>
+<script>
+// ==================== УТИЛИТЫ ====================
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function formatPrice(n) { return Number(n).toLocaleString('ru-RU') + ' ₽'; }
+const statusLabel = s => ({new:'Новая', confirmed:'Подтверждена', rejected:'Отклонена'}[s] || s);
+function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('ru-RU', { dateStyle:'short', timeStyle:'short' });
+}
+
+// ==================== АВТОРИЗАЦИЯ ====================
+function isAdminLoggedIn() {
+    try {
+        const data = sessionStorage.getItem('sd_admin');
+        if (!data) return false;
+        const s = JSON.parse(data);
+        return s && s.login && (Date.now() - s.loggedInAt < 2*60*60*1000);
+    } catch(e) { return false; }
+}
+function getAdminUser() {
+    try { return JSON.parse(sessionStorage.getItem('sd_admin')).login; } catch(e) { return null; }
+}
+function renderAuthBlock() {
+    const block = document.getElementById('auth-block');
+    if (!block) return;
+    if (isAdminLoggedIn()) {
+        block.innerHTML = `
+            <span class="auth-user">👤 ${escapeHtml(getAdminUser())}</span>
+            <a href="logout.html" class="btn btn-outline-light btn-sm">Выйти</a>
+        `;
+    } else {
+        block.innerHTML = `<a href="login.html" class="btn btn-outline-light btn-sm">Войти как администратор</a>`;
+    }
+}
+
+// ==================== ПРОВЕРКА ДОСТУПА ====================
+if (!isAdminLoggedIn()) {
+    document.getElementById('no-access').style.display = 'block';
+} else {
+    document.getElementById('admin-panel').style.display = 'block';
+    renderBookings();
+}
+renderAuthBlock();
+
+// ==================== ЗАЯВКИ ====================
+function renderStats() {
+    const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
+    const s = {
+        all: bookings.length,
+        new: bookings.filter(b => b.status === 'new').length,
+        confirmed: bookings.filter(b => b.status === 'confirmed').length,
+        rejected: bookings.filter(b => b.status === 'rejected').length
+    };
+    document.getElementById('stats').innerHTML = `
+        <a class="stat" onclick="setStatus('all')">Все: <strong>${s.all}</strong></a>
+        <a class="stat stat-new" onclick="setStatus('new')">Новые: <strong>${s.new}</strong></a>
+        <a class="stat stat-confirmed" onclick="setStatus('confirmed')">Подтверждённые: <strong>${s.confirmed}</strong></a>
+        <a class="stat stat-rejected" onclick="setStatus('rejected')">Отклонённые: <strong>${s.rejected}</strong></a>
+    `;
+}
+function setStatus(s) {
+    document.getElementById('status-filter').value = s;
+    renderBookings();
+}
+
+function renderBookings() {
+    renderStats();
+    const status = document.getElementById('status-filter').value;
+    const search = document.getElementById('search-filter').value.trim().toLowerCase();
+    let bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
+
+    if (status !== 'all') bookings = bookings.filter(b => b.status === status);
+    if (search) {
+        bookings = bookings.filter(b =>
+            [b.id, b.lastName, b.firstName, b.phone, b.email, b.roomTitle]
+                .join(' ').toLowerCase().includes(search));
+    }
+
+    const list = document.getElementById('bookings-list');
+    if (bookings.length === 0) {
+        list.innerHTML = '<div class="alert alert-info">Заявок по заданным условиям не найдено.</div>';
+        return;
+    }
+
+    list.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-admin">
+                <thead>
+                    <tr>
+                        <th>№ / создана</th>
+                        <th>Гость и контакты</th>
+                        <th>Номер</th>
+                        <th>Даты</th>
+                        <th>Сумма</th>
+                        <th>Статус</th>
+                        <th>Решение</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ${bookings.map(b => `
+                    <tr>
+                        <td><strong>${escapeHtml(b.id)}</strong><br><small class="text-muted">${formatDate(b.createdAt)}</small></td>
+                        <td>
+                            ${escapeHtml(b.lastName)} ${escapeHtml(b.firstName)}<br>
+                            <small><a href="tel:${escapeHtml(b.phone)}">${escapeHtml(b.phone)}</a></small><br>
+                            <small><a href="mailto:${escapeHtml(b.email)}">${escapeHtml(b.email)}</a></small>
+                            ${b.comment ? `<br><small class="text-muted">💬 ${escapeHtml(b.comment)}</small>` : ''}
+                        </td>
+                        <td>«${escapeHtml(b.roomTitle)}»<br><small class="text-muted">${escapeHtml(b.category)} · ${formatPrice(b.price)}/сут.</small></td>
+                        <td>${escapeHtml(b.checkIn)} —<br>${escapeHtml(b.checkOut)}<br><small class="text-muted">${b.nights} ноч.</small></td>
+                        <td><strong>${formatPrice(b.total)}</strong></td>
+                        <td>
+                            <span class="status status-${b.status}">${statusLabel(b.status)}</span>
+                            ${b.adminComment ? `<br><small class="text-muted">${escapeHtml(b.adminComment)}</small>` : ''}
+                        </td>
+                        <td>
+                            <div class="moderate-form">
+                                <input type="text" id="comment-${b.id}" class="form-control form-control-sm"
+                                       placeholder="Причина отклонения / комментарий"
+                                       value="${escapeHtml(b.adminComment || '')}" maxlength="300">
+                                <div class="d-flex gap-1 mt-1">
+                                    <button class="btn btn-sm btn-success flex-fill" onclick="moderate('${b.id}','confirmed')">Подтвердить</button>
+                                    <button class="btn btn-sm btn-danger flex-fill" onclick="moderate('${b.id}','rejected')">Отклонить</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function moderate(id, decision) {
+    const comment = document.getElementById('comment-' + id).value.trim();
+    if (decision === 'rejected' && !comment) {
+        alert('Укажите причину отклонения — она сохранится в журнале модерации.');
+        return;
+    }
+    const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
+    const b = bookings.find(x => x.id === id);
+    if (!b) return;
+    b.status = decision;
+    b.adminComment = comment;
+    b.moderatedAt = new Date().toISOString();
+    b.moderatedBy = getAdminUser() || 'admin';
+    localStorage.setItem('bookings', JSON.stringify(bookings));
+
+    const flash = document.getElementById('flash');
+    flash.innerHTML = `<div class="alert alert-success">Заявка ${b.id} ${decision === 'confirmed' ? 'подтверждена' : 'отклонена'}.</div>`;
+    setTimeout(() => flash.innerHTML = '', 3000);
+    renderBookings();
+}
+
+function resetAdminFilters() {
+    document.getElementById('status-filter').value = 'all';
+    document.getElementById('search-filter').value = '';
+    renderBookings();
+}
+</script>
+</body>
+</html>

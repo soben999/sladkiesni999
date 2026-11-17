@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бронирование — Гостиница «Сладкие сны»</title>
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/site.css">
+    <style>
+        .field-wrapper { position: relative; margin-bottom: 18px; }
+        .field-wrapper label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px; color: var(--text); }
+        .field-wrapper .form-control { transition: border-color .2s, box-shadow .2s, background .2s; }
+        .field-wrapper .form-control:focus { border-color: var(--primary-soft); box-shadow: 0 0 0 3px rgba(74, 60, 116, 0.15); }
+        .field-wrapper.has-error .form-control { border-color: var(--err); background: #fff6f5; padding-right: 36px; }
+        .field-wrapper.has-error .form-control:focus { box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.15); }
+        .field-wrapper.has-error label { color: var(--err); }
+        .field-wrapper.is-valid .form-control { border-color: var(--ok); background: #f4fbf7; }
+        .field-wrapper.is-valid .form-control:focus { box-shadow: 0 0 0 3px rgba(46, 125, 82, 0.15); }
+        .field-status { position: absolute; right: 12px; top: 38px; font-size: 18px; pointer-events: none; opacity: 0; transition: opacity .2s; }
+        .field-wrapper.has-error .field-status, .field-wrapper.is-valid .field-status { opacity: 1; }
+        .field-error { display: none; margin-top: 6px; padding: 8px 12px; background: #fff0ee; border-left: 3px solid var(--err); border-radius: 4px; color: #8e2318; font-size: 13px; line-height: 1.4; animation: slideDown .25s ease-out; }
+        .field-wrapper.has-error .field-error { display: block; }
+        .field-error strong { display: block; margin-bottom: 2px; color: var(--err); }
+        .field-error .example { display: block; margin-top: 4px; font-family: "Consolas", monospace; color: #5a1a12; background: #ffe4e0; padding: 3px 8px; border-radius: 3px; font-size: 12px; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+        .errors-summary { display: none; padding: 16px 20px; background: #fdecea; border: 1px solid #f5c2bc; border-left: 5px solid var(--err); border-radius: 8px; margin-bottom: 20px; animation: slideDown .3s ease-out; }
+        .errors-summary.show { display: block; }
+        .errors-summary h4 { color: var(--err); margin: 0 0 10px; font-size: 16px; }
+        .errors-summary ul { margin: 0; padding-left: 20px; color: #8e2318; font-size: 14px; }
+        .errors-summary li { margin-bottom: 4px; }
+        .errors-summary li a { color: #8e2318; text-decoration: underline; cursor: pointer; }
+        .field-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+        .consent-wrapper { padding: 12px 14px; background: #f8f6fc; border-radius: 8px; margin-bottom: 18px; }
+        .consent-wrapper.has-error { background: #fff0ee; border: 1px solid #f5c2bc; }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <a href="index.html" class="logo text-decoration-none text-white d-flex align-items-center gap-2">
+                <span class="logo-mark">🌙</span>
+                <div>
+                    <div class="logo-title">Сладкие сны</div>
+                    <div class="logo-slogan">Гостиница, в которой снятся только хорошие сны</div>
+                </div>
+            </a>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <nav class="main-nav">
+                    <a href="index.html">Главная</a>
+                    <a href="index.html#catalog">Каталог</a>
+                </nav>
+                <div id="auth-block"></div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="container py-4">
+    <h1 class="section-title">Бронирование номера</h1>
+    <p class="mb-3"><a href="index.html#catalog" class="back-link">← Вернуться в каталог</a></p>
+
+    <div id="room-not-found" class="alert alert-danger" style="display:none;">
+        Номер не найден. <a href="index.html#catalog">Вернитесь в каталог</a> и выберите номер заново.
+    </div>
+
+    <div id="booking-layout" class="row g-4" style="display:none;">
+        <aside class="col-md-4">
+            <div class="panel">
+                <img id="room-img" class="w-100 rounded mb-3" alt="">
+                <span id="room-category" class="badge"></span>
+                <h2 id="room-title" class="mt-2"></h2>
+                <p id="room-price" class="price"></p>
+                <ul id="room-features" class="features"></ul>
+                <p id="room-guests" class="text-muted small"></p>
+            </div>
+        </aside>
+
+        <section class="col-md-8">
+            <div class="panel">
+                <div id="errors-summary" class="errors-summary">
+                    <h4>⚠️ Заявка не отправлена. Исправьте, пожалуйста:</h4>
+                    <ul id="errors-list"></ul>
+                </div>
+
+                <form id="booking-form" onsubmit="submitBooking(event)" novalidate>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="field-wrapper" id="wrap-firstName">
+                                <label for="firstName">Имя <span class="req">*</span></label>
+                                <input id="firstName" type="text" class="form-control" placeholder="Например: Иван">
+                                <span class="field-status"></span>
+                                <div class="field-error"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-wrapper" id="wrap-lastName">
+                                <label for="lastName">Фамилия <span class="req">*</span></label>
+                                <input id="lastName" type="text" class="form-control" placeholder="Например: Петров">
+                                <span class="field-status"></span>
+                                <div class="field-error"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-wrapper" id="wrap-phone">
+                                <label for="phone">Телефон <span class="req">*</span></label>
+                                <input id="phone" type="tel" class="form-control" placeholder="+7(___)___-__-__">
+                                <span class="field-status"></span>
+                                <div class="field-hint">Вводите только цифры — формат подставится автоматически</div>
+                                <div class="field-error"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-wrapper" id="wrap-email">
+                                <label for="email">E-mail <span class="req">*</span></label>
+                                <input id="email" type="email" class="form-control" placeholder="guest@mail.ru">
+                                <span class="field-status"></span>
+                                <div class="field-error"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-wrapper" id="wrap-checkIn">
+                                <label for="checkIn">Дата заезда <span class="req">*</span></label>
+                                <input id="checkIn" type="text" class="form-control" placeholder="ДД.ММ.ГГГГ">
+                                <span class="field-status"></span>
+                                <div class="field-hint">Например: 01.12.2026</div>
+                                <div class="field-error"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-wrapper" id="wrap-checkOut">
+                                <label for="checkOut">Дата выезда <span class="req">*</span></label>
+                                <input id="checkOut" type="text" class="form-control" placeholder="ДД.ММ.ГГГГ">
+                                <span class="field-status"></span>
+                                <div class="field-hint">Должна быть позже даты заезда</div>
+                                <div class="field-error"></div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="field-wrapper" id="wrap-comment">
+                                <label for="comment">Комментарий (необязательно)</label>
+                                <textarea id="comment" class="form-control" rows="3" maxlength="500" placeholder="Пожелания к номеру"></textarea>
+                                <div class="field-hint"><span id="comment-counter">0</span> / 500 символов</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="consent-wrapper" id="wrap-consent">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="consent">
+                                    <label class="form-check-label" for="consent">
+                                        Согласен на обработку персональных данных <span class="req">*</span>
+                                    </label>
+                                </div>
+                                <div class="field-error" style="margin-left: 24px;"></div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-accent btn-lg w-100" type="submit">Отправить заявку</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <div id="success-panel" class="panel text-center" style="display:none; max-width:680px; margin:0 auto;">
+        <div class="success-icon">✅</div>
+        <h1 class="text-success">Заявка успешно отправлена!</h1>
+        <p id="success-text"></p>
+        <table id="success-details" class="details mx-auto"></table>
+        <a href="index.html#catalog" class="btn btn-accent mt-3">Вернуться в каталог</a>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        <div class="d-flex justify-content-between flex-wrap gap-3">
+            <div>
+                <strong>Гостиница «Сладкие сны»</strong>
+                <p>📍 г. Москва, ул. Примерная, д. 10</p>
+                <p>🕒 Режим работы: круглосуточно, без выходных</p>
+            </div>
+            <div>
+                <p>📞 <a href="tel:+74951234567">+7 (495) 123-45-67</a></p>
+                <p>✉️ <a href="mailto:info@sweet-dreams.ru">info@sweet-dreams.ru</a></p>
+                <p class="text-white-50 small">© 2026 Сладкие сны</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="bootstrap.bundle.min.js"></script>
+<script>
+const roomsDB = [
+    { id: 1,  title: "Мятный сон",          category: "Стандарт",    price: 3200,  guests: 1, area: 16, features: ["1 односпальная кровать", "16 м²", "Wi-Fi", "Душ"],            image: "img/room1.jpeg" },
+    { id: 2,  title: "Тёплое молоко",       category: "Стандарт",    price: 3600,  guests: 2, area: 18, features: ["2 односпальные кровати", "18 м²", "Завтрак включён"],           image: "img/room2.jpeg" },
+    { id: 3,  title: "Облако",              category: "Стандарт",    price: 3900,  guests: 2, area: 20, features: ["1 двуспальная кровать", "20 м²", "Кондиционер"],                image: "img/room3.jpeg" },
+    { id: 4,  title: "Карамель",            category: "Комфорт",     price: 4900,  guests: 2, area: 24, features: ["1 двуспальная кровать", "24 м²", "Балкон", "Завтрак включён"],  image: "img/room4.jpeg" },
+    { id: 5,  title: "Ваниль",              category: "Комфорт",     price: 5300,  guests: 3, area: 26, features: ["Двуспальная + диван", "26 м²", "Рабочая зона"],                 image: "img/room5.jpeg" },
+    { id: 6,  title: "Какао",               category: "Комфорт",     price: 5600,  guests: 2, area: 28, features: ["Кровать King-size", "28 м²", "Вид на парк", "Халаты и тапочки"],image: "img/room6.jpeg" },
+    { id: 7,  title: "Шоколадный трюфель",  category: "Люкс",        price: 8900,  guests: 2, area: 42, features: ["Кровать King-size", "42 м²", "Гостиная зона", "Мини-бар"],      image: "img/room7.jpeg" },
+    { id: 8,  title: "Медовый месяц",       category: "Люкс",        price: 10500, guests: 2, area: 48, features: ["Кровать King-size", "48 м²", "Джакузи", "Панорамные окна"],     image: "img/room8.jpg" },
+    { id: 9,  title: "Королевская ночь",    category: "Люкс",        price: 13900, guests: 3, area: 60, features: ["Спальня + гостиная", "60 м²", "Сауна", "Консьерж"],             image: "img/room9.jpeg" },
+    { id: 10, title: "Пряничный домик",     category: "Семейный",    price: 6900,  guests: 4, area: 38, features: ["2 комнаты", "38 м²", "Детская кроватка", "Завтрак включён"],    image: "img/room10.jpeg" },
+    { id: 11, title: "Мармелад",            category: "Семейный",    price: 7600,  guests: 5, area: 44, features: ["2 комнаты", "44 м²", "Кухня-ниша", "Игровая зона"],             image: "img/room11.jpg" },
+    { id: 12, title: "Апартаменты «Сны»",   category: "Апартаменты", price: 15900, guests: 4, area: 75, features: ["2 спальни + гостиная", "75 м²", "Кухня", "Стиральная машина", "Терраса"], image: "img/room12.jpeg" }
+];
+
+function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function formatPrice(n) { return Number(n).toLocaleString('ru-RU') + ' ₽'; }
+function roomImage(room) {
+    // Если у номера есть картинка — используем её, иначе — заглушку
+    return room.image || `data:image/svg+xml;utf8,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+            <rect width="600" height="400" fill="#e7e3f3"/>
+            <text x="300" y="200" font-family="sans-serif" font-size="24" fill="#999" text-anchor="middle">Нет фото</text>
+        </svg>`)}`;
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+const params = new URLSearchParams(location.search);
+const roomId = Number(params.get('room'));
+const room = roomsDB.find(r => r.id === roomId);
+
+if (!room) {
+    document.getElementById('room-not-found').style.display = 'block';
+} else {
+    document.getElementById('booking-layout').style.display = 'flex';
+    document.getElementById('room-img').src = roomSVG(room);
+    document.getElementById('room-img').alt = room.title;
+    document.getElementById('room-category').textContent = room.category;
+    document.getElementById('room-title').textContent = room.title;
+    document.getElementById('room-price').innerHTML = `${formatPrice(room.price)} <span class="text-muted small">/ сутки</span>`;
+    document.getElementById('room-features').innerHTML = room.features.map(f => `<li>${escapeHtml(f)}</li>`).join('') + `<li>Гостей: ${room.guests}</li>`;
+    document.getElementById('room-guests').textContent = `Максимум гостей: ${room.guests}`;
+}
+
+// ==================== МАСКА ТЕЛЕФОНА ====================
+const phoneInput = document.getElementById('phone');
+phoneInput.addEventListener('input', formatPhone);
+phoneInput.addEventListener('focus', formatPhone);
+phoneInput.addEventListener('blur', formatPhone);
+phoneInput.addEventListener('paste', e => {
+    e.preventDefault();
+    const pasted = (e.clipboardData || window.clipboardData).getData('text');
+    const digits = pasted.replace(/\D/g, '').slice(0, 11);
+    phoneInput.value = applyPhoneMask(digits);
+    validateField('phone');
+});
+phoneInput.addEventListener('keydown', e => {
+    const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Tab','Home','End'];
+    if (allowed.includes(e.key)) return;
+    if (e.ctrlKey || e.metaKey) return;
+    if (!/^\d$/.test(e.key)) e.preventDefault();
+});
+
+function applyPhoneMask(digits) {
+    if (digits.startsWith('8')) digits = '7' + digits.slice(1);
+    if (!digits.startsWith('7') && digits.length > 0) digits = '7' + digits;
+    digits = digits.slice(0, 11);
+    let result = '';
+    if (digits.length >= 1) result = '+7';
+    if (digits.length >= 2) result += '(' + digits.slice(1, 4);
+    if (digits.length >= 5) result += ')' + digits.slice(4, 7);
+    else if (digits.length === 4) result += ')';
+    if (digits.length >= 8) result += '-' + digits.slice(7, 9);
+    else if (digits.length === 7) result += '-';
+    if (digits.length >= 10) result += '-' + digits.slice(9, 11);
+    else if (digits.length === 9) result += '-';
+    return result;
+}
+function formatPhone() {
+    const digits = phoneInput.value.replace(/\D/g, '').slice(0, 11);
+    phoneInput.value = applyPhoneMask(digits);
+}
+
+// ==================== СЧЁТЧИК КОММЕНТАРИЯ ====================
+const commentInput = document.getElementById('comment');
+const commentCounter = document.getElementById('comment-counter');
+commentInput.addEventListener('input', () => {
+    commentCounter.textContent = commentInput.value.length;
+});
+
+// ==================== ВАЛИДАЦИЯ ====================
+function setFieldState(fieldId, state, message, example) {
+    const wrap = document.getElementById('wrap-' + fieldId);
+    const errorBox = wrap.querySelector('.field-error');
+    const statusIcon = wrap.querySelector('.field-status');
+    wrap.classList.remove('has-error', 'is-valid');
+    errorBox.innerHTML = '';
+    statusIcon.textContent = '';
+    if (state === 'error') {
+        wrap.classList.add('has-error');
+        statusIcon.textContent = '✗';
+        statusIcon.style.color = 'var(--err)';
+        let html = `<strong>${message}</strong>`;
+        if (example) html += `<span class="example">Пример: ${escapeHtml(example)}</span>`;
+        errorBox.innerHTML = html;
+    } else if (state === 'ok') {
+        wrap.classList.add('is-valid');
+        statusIcon.textContent = '✓';
+        statusIcon.style.color = 'var(--ok)';
+    }
+}
+
+function validateField(fieldId) {
+    const v = getValues();
+    switch (fieldId) {
+        case 'firstName': return checkName('firstName', v.firstName, 'Имя');
+        case 'lastName':  return checkName('lastName', v.lastName, 'Фамилия');
+        case 'phone':     return checkPhone(v.phone);
+        case 'email':     return checkEmail(v.email);
+        case 'checkIn':   return checkDate('checkIn', v.checkIn, 'Дата заезда');
+        case 'checkOut':  return checkDate('checkOut', v.checkOut, 'Дата выезда');
+    }
+    return true;
+}
+
+['firstName','lastName','phone','email','checkIn','checkOut'].forEach(id => {
+    document.getElementById(id).addEventListener('blur', () => {
+        const val = document.getElementById(id).value.trim();
+        if (val) validateField(id);
+    });
+});
+
+const RE_NAME  = /^[А-Яа-яЁё]+(?:[ .\-][А-Яа-яЁё]+)*\.?$/;
+const RE_PHONE = /^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$/;
+const RE_EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+
+function checkName(fieldId, value, label) {
+    if (!value) { setFieldState(fieldId, 'error', `Поле «${label}» обязательно для заполнения.`, 'Иван'); return false; }
+    if (value.length < 2) { setFieldState(fieldId, 'error', `Слишком короткое ${label.toLowerCase()}. Минимум 2 символа.`, 'Иван'); return false; }
+    if (value.length > 50) { setFieldState(fieldId, 'error', `${label} слишком длинное. Максимум 50 символов.`); return false; }
+    if (!RE_NAME.test(value)) { setFieldState(fieldId, 'error', `${label} может содержать только кириллицу, пробелы, точки и тире.`, 'Иван-Петров'); return false; }
+    setFieldState(fieldId, 'ok');
+    return true;
+}
+function checkPhone(value) {
+    const cleaned = value.replace(/\s/g, '');
+    if (!cleaned) { setFieldState('phone', 'error', 'Укажите номер телефона.', '+7(999)123-45-67'); return false; }
+    if (!RE_PHONE.test(cleaned)) {
+        const digits = cleaned.replace(/\D/g, '');
+        if (digits.length < 11) setFieldState('phone', 'error', `Номер неполный. Должно быть 11 цифр. Сейчас: ${digits.length}.`, '+7(999)123-45-67');
+        else setFieldState('phone', 'error', 'Неверный формат телефона.', '+7(999)123-45-67');
+        return false;
+    }
+    setFieldState('phone', 'ok');
+    return true;
+}
+function checkEmail(value) {
+    if (!value) { setFieldState('email', 'error', 'Укажите e-mail.', 'guest@mail.ru'); return false; }
+    if (!RE_EMAIL.test(value)) {
+        if (!value.includes('@')) setFieldState('email', 'error', 'В e-mail должен быть символ @.', 'guest@mail.ru');
+        else if (!value.includes('.')) setFieldState('email', 'error', 'В e-mail должен быть домен с точкой.', 'guest@mail.ru');
+        else setFieldState('email', 'error', 'Некорректный формат e-mail.', 'guest@mail.ru');
+        return false;
+    }
+    setFieldState('email', 'ok');
+    return true;
+}
+function parseRuDate(str) {
+    if (!/^\d{2}\.\d{2}\.\d{4}$/.test(str)) return null;
+    const [d,m,y] = str.split('.').map(Number);
+    if (y<1900||y>2100||m<1||m>12) return null;
+    const dt = new Date(Date.UTC(y, m-1, d));
+    if (dt.getUTCFullYear()!==y || dt.getUTCMonth()!==m-1 || dt.getUTCDate()!==d) return null;
+    return dt;
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function todayRu() { const d = new Date(); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`; }
+function checkDate(fieldId, value, label) {
+    if (!value) { setFieldState(fieldId, 'error', `Укажите ${label.toLowerCase()}.`, '01.12.2026'); return false; }
+    if (!/^\d{2}\.\d{2}\.\d{4}$/.test(value)) { setFieldState(fieldId, 'error', 'Дата должна быть в формате ДД.ММ.ГГГГ.', '01.12.2026'); return false; }
+    const dt = parseRuDate(value);
+    if (!dt) { setFieldState(fieldId, 'error', 'Такой даты не существует в календаре.', '01.12.2026'); return false; }
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (dt < today) { setFieldState(fieldId, 'error', `${label} не может быть в прошлом. Сегодня: ${todayRu()}.`, todayRu()); return false; }
+    setFieldState(fieldId, 'ok');
+    return true;
+}
+function checkDatesPair(inDate, outDate) {
+    if (inDate && outDate && outDate <= inDate) {
+        setFieldState('checkOut', 'error', 'Дата выезда должна быть позже даты заезда.', '05.12.2026');
+        return false;
+    }
+    return true;
+}
+function checkConsent(checked) {
+    const wrap = document.getElementById('wrap-consent');
+    const errorBox = wrap.querySelector('.field-error');
+    wrap.classList.remove('has-error');
+    errorBox.innerHTML = '';
+    if (!checked) {
+        wrap.classList.add('has-error');
+        errorBox.innerHTML = '<strong>Необходимо ваше согласие.</strong> Без него мы не можем принять заявку.';
+        return false;
+    }
+    return true;
+}
+
+function getValues() {
+    return {
+        firstName: document.getElementById('firstName').value.trim(),
+        lastName:  document.getElementById('lastName').value.trim(),
+        phone:     document.getElementById('phone').value.trim().replace(/\s/g,''),
+        email:     document.getElementById('email').value.trim().replace(/\s/g,''),
+        checkIn:   document.getElementById('checkIn').value.trim(),
+        checkOut:  document.getElementById('checkOut').value.trim(),
+        comment:   document.getElementById('comment').value.trim(),
+        consent:   document.getElementById('consent').checked
+    };
+}
+
+function submitBooking(e) {
+    e.preventDefault();
+    const v = getValues();
+    document.getElementById('errors-summary').classList.remove('show');
+
+    const errors = [];
+    if (!checkName('firstName', v.firstName, 'Имя')) errors.push({field:'firstName', text:'Имя указано некорректно'});
+    if (!checkName('lastName', v.lastName, 'Фамилия')) errors.push({field:'lastName', text:'Фамилия указана некорректно'});
+    if (!checkPhone(v.phone)) errors.push({field:'phone', text:'Телефон указан некорректно'});
+    if (!checkEmail(v.email)) errors.push({field:'email', text:'E-mail указан некорректно'});
+    const inOk = checkDate('checkIn', v.checkIn, 'Дата заезда');
+    const outOk = checkDate('checkOut', v.checkOut, 'Дата выезда');
+    if (!inOk) errors.push({field:'checkIn', text:'Дата заезда указана некорректно'});
+    if (!outOk) errors.push({field:'checkOut', text:'Дата выезда указана некорректно'});
+    const inDate = parseRuDate(v.checkIn);
+    const outDate = parseRuDate(v.checkOut);
+    if (inDate && outDate && !checkDatesPair(inDate, outDate)) errors.push({field:'checkOut', text:'Дата выезда раньше даты заезда'});
+    if (!checkConsent(v.consent)) errors.push({field:'consent', text:'Не дано согласие'});
+
+    if (errors.length > 0) {
+        const list = document.getElementById('errors-list');
+        list.innerHTML = errors.map(err => `<li><a onclick="scrollToField('${err.field}')">${escapeHtml(err.text)}</a></li>`).join('');
+        const summary = document.getElementById('errors-summary');
+        summary.classList.add('show');
+        summary.scrollIntoView({behavior:'smooth', block:'start'});
+        return;
+    }
+
+    // Сохраняем заявку в localStorage
+    const nights = Math.round((outDate - inDate) / 86400000);
+    const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
+    const booking = {
+        id: 'SD-' + String(bookings.length + 1).padStart(4,'0'),
+        roomId: room.id,
+        roomTitle: room.title,
+        category: room.category,
+        price: room.price,
+        firstName: v.firstName,
+        lastName: v.lastName,
+        phone: v.phone,
+        email: v.email,
+        checkIn: v.checkIn,
+        checkOut: v.checkOut,
+        nights: nights,
+        total: nights * room.price,
+        comment: v.comment,
+        status: 'new',
+        createdAt: new Date().toISOString(),
+        adminComment: '',
+        moderatedAt: null,
+        moderatedBy: null
+    };
+    bookings.push(booking);
+    localStorage.setItem('bookings', JSON.stringify(bookings));
+
+    document.getElementById('booking-layout').style.display = 'none';
+    document.getElementById('success-panel').style.display = 'block';
+    document.getElementById('success-text').innerHTML =
+        `Номер вашей заявки: <strong>${booking.id}</strong>. Администратор рассмотрит её и свяжется с вами по телефону ${escapeHtml(booking.phone)}.`;
+    document.getElementById('success-details').innerHTML = `
+        <tr><th>Номер</th><td>«${escapeHtml(booking.roomTitle)}» (${escapeHtml(booking.category)})</td></tr>
+        <tr><th>Гость</th><td>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)}</td></tr>
+        <tr><th>E-mail</th><td>${escapeHtml(booking.email)}</td></tr>
+        <tr><th>Заезд</th><td>${escapeHtml(booking.checkIn)}</td></tr>
+        <tr><th>Выезд</th><td>${escapeHtml(booking.checkOut)}</td></tr>
+        <tr><th>Ночей</th><td>${booking.nights}</td></tr>
+        <tr><th>Итого</th><td><strong>${formatPrice(booking.total)}</strong></td></tr>
+        <tr><th>Статус</th><td><span class="status status-new">Новая</span></td></tr>
+    `;
+    window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function scrollToField(fieldId) {
+    const el = document.getElementById('wrap-' + fieldId);
+    if (el) {
+        el.scrollIntoView({behavior:'smooth', block:'center'});
+        const input = el.querySelector('input, textarea');
+        if (input) setTimeout(() => input.focus(), 400);
+    }
+}
+
+// ==================== БЛОК АВТОРИЗАЦИИ ====================
+function renderAuthBlock() {
+    const block = document.getElementById('auth-block');
+    if (!block) return;
+    let session = null;
+    try { session = JSON.parse(sessionStorage.getItem('sd_admin')); } catch(e) {}
+    if (session && session.login) {
+        block.innerHTML = `
+            <span class="auth-user">👤 ${escapeHtml(session.login)}</span>
+            <a href="logout.html" class="btn btn-outline-light btn-sm">Выйти</a>
+        `;
+    } else {
+        block.innerHTML = `<a href="login.html" class="btn btn-outline-light btn-sm">Войти как администратор</a>`;
+    }
+}
+document.addEventListener('DOMContentLoaded', renderAuthBlock);
+</script>
+</body>
+</html>
